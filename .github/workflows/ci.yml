@@ -1,0 +1,56 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install dependencies
+        run: npm install
+        working-directory: ./04.continuous-testing/lab
+      
+      - name: Run tests
+        run: npm test
+        working-directory: ./04.continuous-testing/lab
+        env:
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Deploy to Heroku
+        env:
+          HEROKU_API_KEY: ${{secrets.HEROKU_API_KEY}}
+        run: |
+          git remote add heroku https://heroku:$HEROKU_API_KEY@git.heroku.com/louisamedeo-userapi.git
+          git subtree push --prefix 04.continuous-testing/lab heroku main
+
