@@ -44,15 +44,13 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       
       - name: Deploy to Heroku
-        uses: akhileshns/heroku-deploy@v3.13.15
-        with:
-          heroku_api_key: ${{secrets.HEROKU_API_KEY}}
-          heroku_app_name: "louisamedeo-userapi"
-          heroku_email: "louis.amede@edu.ece.fr"
-          appdir: "04.continuous-testing/lab"
-          dontuseforce: true
-      
-      
-      
+        env:
+          HEROKU_API_KEY: ${{secrets.HEROKU_API_KEY}}
+        run: |
+          git remote add heroku https://heroku:$HEROKU_API_KEY@git.heroku.com/louisamedeo-userapi.git
+          git subtree push --prefix 04.continuous-testing/lab heroku main
+
