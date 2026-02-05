@@ -1,8 +1,10 @@
-name: CI
+name: CI/CD
 
 on:
   push:
+    branches: [ main ]
   pull_request:
+    branches: [ main ]
 
 jobs:
   test:
@@ -34,3 +36,25 @@ jobs:
           REDIS_HOST: localhost
           REDIS_PORT: 6379
 
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Deploy to Heroku
+        uses: akhileshns/heroku-deploy@v3.13.15
+        with:
+          heroku_api_key: ${{secrets.HEROKU_API_KEY}}
+          heroku_app_name: "louisamedeo-userapi"
+          heroku_email: "louis.amedeo@edu.ece.fr"
+          appdir: "04.continuous-testing/lab"
+
+
+
+      
+      
+      
