@@ -50,11 +50,9 @@ jobs:
         with:
           heroku_api_key: ${{secrets.HEROKU_API_KEY}}
           heroku_app_name: "louisamedeo-userapi"
-          heroku_email: "louis.amedeo@edu.ece.fr"
+          heroku_email: "louis.amede@edu.ece.fr"
           appdir: "04.continuous-testing/lab"
-
-
-
+          dontuseforce: true
       
       
       
