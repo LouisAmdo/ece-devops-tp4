@@ -1,8 +1,0 @@
----
-- hosts: gitlab_server
-  become: true
-  roles:
-  - role: gitlab/install
-    tags: install
-  - role: gitlab/healthchecks
-    tags: check
