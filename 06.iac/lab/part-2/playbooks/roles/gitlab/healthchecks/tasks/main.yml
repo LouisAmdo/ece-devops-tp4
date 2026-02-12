@@ -31,12 +31,14 @@
 # ============================================================
 # 2. Readiness Check
 # https://docs.gitlab.com/ee/administration/monitoring/health_check.html#readiness
+# Using ?all=1 to get detailed status of all sub-services
 # ============================================================
 - name: Check GitLab readiness
   uri:
-    url: http://127.0.0.1:80/-/readiness
+    url: http://127.0.0.1:80/-/readiness?all=1
     return_content: yes
   register: gitlab_readiness
+  failed_when: false
 
 - name: Print GitLab readiness
   debug:
@@ -59,6 +61,7 @@
 # ============================================================
 # BONUS: Print dysfunctional services from readiness check
 # To test: run 'sudo gitlab-ctl stop redis' before executing
+# Uses the ?all=1 readiness response which returns per-service status
 # ============================================================
 - name: Identify dysfunctional services
   set_fact:
@@ -66,9 +69,9 @@
       {{
         gitlab_readiness.json
         | dict2items
-        | selectattr('value', 'mapping')
-        | selectattr('value.status', 'defined')
-        | selectattr('value.status', 'ne', 'ok')
+        | rejectattr('key', 'equalto', 'status')
+        | selectattr('value.0.status', 'defined')
+        | selectattr('value.0.status', 'ne', 'ok')
         | map(attribute='key')
         | list
       }}

@@ -1,23 +1,29 @@
 # Docker equivalent of the Vagrant Rocky 8 VM with GitLab (Part 2)
 # Uses the official GitLab Docker image instead of installing via Ansible on a VM
-# This achieves the same result: a running GitLab instance accessible on port 8080
-
-version: '3.8'
+# This achieves the same result: a running GitLab instance accessible on port 8888
+# Using GitLab CE (Community Edition) to reduce memory footprint
 
 services:
   gitlab_server:
-    image: gitlab/gitlab-ee:latest
+    image: gitlab/gitlab-ce:latest
     container_name: gitlab.server.local
     hostname: gitlab.local
-    restart: always
+    restart: unless-stopped
     environment:
       GITLAB_OMNIBUS_CONFIG: |
         external_url 'http://gitlab.local'
         gitlab_rails['gitlab_shell_ssh_port'] = 2224
-        # Reduce memory usage for lab environment
-        puma['worker_processes'] = 2
-        sidekiq['concurrency'] = 5
+        # ---- Memory optimizations (8GB server) ----
+        puma['worker_processes'] = 0
+        puma['min_threads'] = 1
+        puma['max_threads'] = 2
+        sidekiq['concurrency'] = 2
         prometheus_monitoring['enable'] = false
+        gitlab_kas['enable'] = false
+        gitlab_pages['enable'] = false
+        registry['enable'] = false
+        postgresql['shared_buffers'] = "128MB"
+        postgresql['max_worker_processes'] = 2
     ports:
       # Equivalent to: config.vm.network "forwarded_port", guest: 80, host: 8080
       # Using port 8888 because 8080 is occupied by Coolify
@@ -32,17 +38,15 @@ services:
     deploy:
       resources:
         limits:
-          # Equivalent to Vagrant VM specs: 4096 MB RAM, 2 CPUs
-          memory: 4096M
+          memory: 2560M
           cpus: '2'
     shm_size: '256m'
-    # Health check equivalent to Part 3
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/-/health"]
-      interval: 30s
+      test: ["CMD", "curl", "-sf", "http://localhost/-/health"]
+      interval: 60s
       timeout: 10s
-      retries: 10
-      start_period: 300s
+      retries: 15
+      start_period: 600s
 
 volumes:
   gitlab_config:

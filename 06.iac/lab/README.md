@@ -11,7 +11,7 @@ Since this environment uses **Docker** instead of VirtualBox/Vagrant, we adapted
 
 ### Description
 
-Instead of using Vagrant with a CentOS 7 VM, we use a Docker container based on the `centos:7` image.  
+Instead of using Vagrant with a CentOS 7 VM, we use a Docker container based on `rockylinux:8` (CentOS 7 is EOL, Rocky 8 is the same RHEL family).  
 The Dockerfile replicates the shell provisioning steps from the Vagrantfile:
 
 1. **Hello, World** - echoed on container start
@@ -24,10 +24,10 @@ The Dockerfile replicates the shell provisioning steps from the Vagrantfile:
 cd 06.iac/lab/part-1
 
 # Build and start (equivalent to `vagrant up`)
-docker-compose up -d --build
+docker compose up -d --build
 
 # Check the container is running (equivalent to `vagrant status`)
-docker-compose ps
+docker compose ps
 
 # Enter the container (equivalent to `vagrant ssh`)
 docker exec -it centos.server.local bash
@@ -39,23 +39,28 @@ cat /etc/vagrant_provisioned_at
 # You should see the provisioning date
 
 # Stop the container (equivalent to `vagrant halt`)
-docker-compose stop
+docker compose stop
 
 # Destroy the container (equivalent to `vagrant destroy`)
-docker-compose down
+docker compose down
 ```
 
-### Verification
+### Verification output
 
 ```
-$ docker exec centos.server.local cat /etc/hosts
+$ docker logs centos.server.local
+=== Hello, World ===
+
+=== /etc/hosts content ===
 127.0.0.1       localhost
 ::1     localhost ip6-localhost ip6-loopback
 ...
 127.0.0.1  mydomain-1.local
 
-$ docker exec centos.server.local cat /etc/vagrant_provisioned_at
-Wed Feb 12 13:30:00 UTC 2026
+=== Provisioned at ===
+Thu Feb 12 13:39:02 UTC 2026
+
+Container is ready. Use docker exec -it centos.server.local bash to connect.
 ```
 
 ---
@@ -64,52 +69,53 @@ Wed Feb 12 13:30:00 UTC 2026
 
 ### Description
 
-Instead of using Vagrant + Ansible to install GitLab on a Rocky 8 VM, we use the official `gitlab/gitlab-ee` Docker image.  
-This achieves the same result: a running GitLab instance accessible on `http://localhost:8080`.
+Instead of using Vagrant + Ansible to install GitLab on a Rocky 8 VM, we use the official `gitlab/gitlab-ce` Docker image.  
+This achieves the same result: a running GitLab instance accessible on `http://localhost:8888`.
 
 The `docker-compose.yml` replicates the Vagrant configuration:
-- **Port forwarding**: guest 80 → host 8080 (same as Vagrantfile)
-- **Resources**: 4096 MB RAM, 2 CPUs (same as Vagrantfile)
+- **Port forwarding**: guest 80 → host 8888
+- **Resources**: 2560 MB RAM, 2 CPUs (optimized for 8GB server)
 - **Ansible playbooks**: mounted at `/vagrant/playbooks` for reference
+- **Memory optimizations**: Puma worker 0, Sidekiq concurrency 2, Prometheus/KAS/Pages/Registry disabled
 
 ### How to run
 
 ```bash
 cd 06.iac/lab/part-2
 
-# Build and start GitLab (equivalent to `vagrant up`)
-docker-compose up -d
+# Start GitLab (equivalent to `vagrant up`)
+docker compose up -d
 
 # Check status
-docker-compose ps
+docker compose ps
 
 # Wait 5-10 minutes for GitLab to initialize, then check health:
 docker exec gitlab.server.local curl -s http://127.0.0.1/-/health
 # Expected: GitLab OK
 
 # Access GitLab in browser
-# Open: http://localhost:8080
+# Open: http://localhost:8888
 
 # Get the initial root password:
 docker exec gitlab.server.local cat /etc/gitlab/initial_root_password | grep Password:
 
 # Stop GitLab (equivalent to `vagrant halt`)
-docker-compose stop
+docker compose stop
 
 # Destroy GitLab (equivalent to `vagrant destroy`)
-docker-compose down -v
+docker compose down -v
 ```
 
-### Verification
+### Verification output
 
 ```
-$ curl http://localhost:8080/-/health
+$ docker exec gitlab.server.local curl -s http://127.0.0.1/-/health
 GitLab OK
 
-$ curl http://localhost:8080/-/readiness
-{"status":"ok","master_check":[{"status":"ok"}]}
+$ docker exec gitlab.server.local curl -s http://127.0.0.1/-/readiness
+{"status":"ok"}
 
-$ curl http://localhost:8080/-/liveness
+$ docker exec gitlab.server.local curl -s http://127.0.0.1/-/liveness
 {"status":"ok"}
 ```
 
@@ -122,7 +128,7 @@ $ curl http://localhost:8080/-/liveness
 The health check playbook (`playbooks/roles/gitlab/healthchecks/tasks/main.yml`) implements **three** types of health checks using the Ansible `uri` module:
 
 1. **Health check** (`/-/health`) — basic "GitLab OK" response
-2. **Readiness check** (`/-/readiness`) — verifies all sub-services (db, redis, cache, etc.)
+2. **Readiness check** (`/-/readiness?all=1`) — verifies all sub-services (db, redis, cache, etc.)
 3. **Liveness check** (`/-/liveness`) — confirms the application is alive
 
 ### Running health checks manually (inside the container)
@@ -132,9 +138,9 @@ The health check playbook (`playbooks/roles/gitlab/healthchecks/tasks/main.yml`)
 docker exec gitlab.server.local curl -s http://127.0.0.1/-/health
 # Output: GitLab OK
 
-# Readiness check
-docker exec gitlab.server.local curl -s http://127.0.0.1/-/readiness
-# Output: {"status":"ok","master_check":[{"status":"ok"}]}
+# Readiness check (detailed with all sub-services)
+docker exec gitlab.server.local curl -s "http://127.0.0.1/-/readiness?all=1"
+# Output: {"status":"ok","db_check":[{"status":"ok"}],...}
 
 # Liveness check
 docker exec gitlab.server.local curl -s http://127.0.0.1/-/liveness
@@ -145,7 +151,7 @@ docker exec gitlab.server.local curl -s http://127.0.0.1/-/liveness
 
 ```bash
 # Install Ansible inside the container
-docker exec gitlab.server.local bash -c "yum install -y ansible || apt-get install -y ansible"
+docker exec gitlab.server.local bash -c "apt-get update && apt-get install -y ansible"
 
 # Run the health check playbook
 docker exec gitlab.server.local ansible-playbook /vagrant/playbooks/run.yml --tags check -c local -i "localhost,"
@@ -176,12 +182,27 @@ The bonus task adds two extra Ansible tasks to the health check playbook:
 # Stop Redis to simulate a failure
 docker exec gitlab.server.local gitlab-ctl stop redis
 
-# Run readiness check — should show redis as dysfunctional
-docker exec gitlab.server.local curl -s http://127.0.0.1/-/readiness
-# Output will show redis_check with status "failed"
+# Run detailed readiness check — shows all failed Redis-dependent services
+docker exec gitlab.server.local curl -s "http://127.0.0.1/-/readiness?all=1"
+# Output: {"status":"failed","cache_check":[{"status":"failed",...}],...}
 
 # Restart Redis
 docker exec gitlab.server.local gitlab-ctl start redis
+```
+
+### Actual output with Redis stopped
+
+```json
+{
+  "status": "failed",
+  "db_check": [{"status": "ok"}],
+  "cache_check": [{"status": "failed", "message": "...redis.socket..."}],
+  "feature_flag_check": [{"status": "failed", "message": "...redis.socket..."}],
+  "queues_check": [{"status": "failed", "message": "...redis.socket..."}],
+  "sessions_check": [{"status": "failed", "message": "...redis.socket..."}],
+  "shared_state_check": [{"status": "failed", "message": "...redis.socket..."}],
+  "gitaly_check": [{"status": "ok"}]
+}
 ```
 
 ### Expected Ansible output (bonus task)
