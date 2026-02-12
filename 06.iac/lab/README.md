@@ -42,17 +42,22 @@ cd lab/part-1
 
 # Create and provision the VM
 vagrant up
+```
 ![Vagrant Up](images-screens/Vagrant%20Up.jpg)
 ![Vagrant Provision](images-screens/Vagrant%20Provision.jpg)
 
+```bash
 # Check VM status
 vagrant status
+```
 ![Vagrant Status](images-screens/Vagrant%20Status.jpg)
 
+```bash
 # SSH into the VM
 vagrant ssh
-![Vagrant SSH](images-screens/Vagrant%20ssh.jpg)
 ```
+![Vagrant SSH](images-screens/Vagrant%20ssh.jpg)
+
 
 ![Cat Etc Hosts](images-screens/cat%20etc%20hosts.jpg)
 
@@ -97,16 +102,21 @@ cd lab/part-2
 
 # Upload playbooks (if needed)
 # vagrant upload playbooks
+```
 ![Vagrant Upload Playbooks](images-screens/vagrant%20upload%20playbooks.jpg)
 
+```bash
 # Create the VM and install GitLab (takes 5-10 min)
 vagrant up
-![Vagrant Provision 2](images-screens/vagrant%20provision-2.jpg)
+```
+![Vagrant Provision 2](images-screens/vagrant%20provision%202.jpg)
 
+```bash
 # Check VM status
 vagrant status
-![Vagrant Status 2](images-screens/Vagrant%20status%202.jpg)
 ```
+![Vagrant Status 2](images-screens/Vagrant%20status%202.jpg)
+
 
 ### Test the installation
 
@@ -119,7 +129,7 @@ You should see the GitLab login page. Log in with:
   vagrant ssh
   sudo cat /etc/gitlab/initial_root_password
   ```
-  ![Vagrant SSH 2](images-screens/vagrant%20ssh%202.jpg)
+![Vagrant SSH 2](images-screens/vagrant%20ssh%202.jpg)
 
 ![GitLab UI](images-screens/GitLab%20UI%20Proof%20Working.png)
 
