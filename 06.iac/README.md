@@ -1,7 +1,7 @@
 # Rapport de Lab : Infrastructure as Code (IaC)
 
 **Sujet :** Provisionnement impératif et déclaratif avec Vagrant et Ansible  
-**Auteurs :**Amedeo Louis & Benatar Arthur 
+**Auteurs :** Amedeo Louis & Benatar Arthur 
 **Date :** 12 Février 2026
 
 ---
