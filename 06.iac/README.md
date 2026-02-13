@@ -80,4 +80,3 @@ Le but était de lister les services dysfonctionnels en cas de panne de Redis.
 ## 7. Conclusion
 Le lab a démontré l'efficacité du mode déclaratif. Ansible permet non seulement de déployer une application lourde comme GitLab, mais aussi d'assurer une surveillance précise de son état interne.
 
-**État du projet :** Terminé ✅
